@@ -5,6 +5,7 @@ from numba import jit
 import bottleneck as bn
 import scipy.stats as sc
 from math import log, sqrt
+import pickle
 
 eps = 1e-15  #: Threshold value: everything in [0, 1] is truncated to [eps, 1 - eps]
 
@@ -189,3 +190,7 @@ def plot_mean_arms(mean_arms, color_list, marker_list):
     plt.legend()
     plt.show()
     return 0
+
+def save_data(L):
+    
+    pass

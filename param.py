@@ -1,9 +1,9 @@
 import numpy as np
 
 param={
-    'T':10000, # round 
+    'T':100000, # round 
     'K':10,  # arm
-    'm':1000, # length of stationary phase, breakpoints=T/m
+    'm':10000, # length of stationary phase, breakpoints=T/m
     'N':100 # repeat times
 }
 
@@ -11,7 +11,7 @@ T=param['T']
 K=param['K']
 m=param['m']
 nb_change=int(T/m)
-Gamma_T_garivier = nb_change-1
+Gamma_T_garivier = max(nb_change-1,1)
 reward_u_p = 1
 sigma_max = 1
 gamma_EXP3 = min(1, np.sqrt(K*(nb_change*np.log(K*T)+np.exp(1))/((np.exp(1)-1)*T)))
