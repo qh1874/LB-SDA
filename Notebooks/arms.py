@@ -77,8 +77,7 @@ class ArmGaussian(AbstractArm):
         Sampling strategy
         :return: float, a sample from the arm
         """
-        return np.clip(self.local_random.normal(self.mu, self.eta, 1),0,1)
-        #return np.clip(np.random.normal(self.mu, self.eta, 1),0,1)
+        return self.local_random.normal(self.mu, self.eta, 1)
 
 
 class ArmFinite(AbstractArm):

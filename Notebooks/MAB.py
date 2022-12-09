@@ -4,7 +4,7 @@ import arms
 from tqdm import tqdm
 from math import log
 from utils import rd_argmax, get_leader, get_leader_ns, klucbBern
-from tracker import SWTracker, DiscountTracker, TrackerDTS1, TrackerEXP3, TrackerDTS, TrackerCUSUM, TrackerMUCB
+from tracker import SWTracker, DiscountTracker, TrackerEXP3, TrackerDTS, TrackerCUSUM, TrackerMUCB
 from tracker import TrackerSWTS, TrackerREXP3, TrackerLM
 
 mapping = {'B': arms.ArmBernoulli, 'beta': arms.ArmBeta, 'F': arms.ArmFinite, 'G': arms.ArmGaussian,
@@ -185,39 +185,6 @@ class GenericMAB:
             arm = np.argmax(np.random.normal(mu_, np.sqrt(sigma_square)))
             reward = self.MAB[arm].sample()[0]
             tr.update(t, arm, reward)
-        return tr
-    
-    def DTS_gaussian1(self, T, gamma, kexi=100,tao_max=0.18, store_rewards_arm=True):
-        """
-        Adaptation of Discounted TS to Gaussian distributions.
-        :param T: T: T: time horizon.
-        :param gamma: gamma: discount factor used to compute the posterior
-        :param kexi: adjust the variance
-        :param tao_max: maximum variance
-        :param store_rewards_arm: Storing the rewards for the different arms.
-        :return:
-        """
-        tr = TrackerDTS1(self.means, T, gamma,kexi,tao_max, store_rewards_arm=store_rewards_arm)
-        K=tr.nb_draws.shape[0]
-        tao=np.ones(K)
-        mu_hat=np.zeros(K)
-        for t in range(T):
-            self.check_restart(tr)
-            arm = np.argmax(np.random.normal(mu_hat, tao))
-            reward = self.MAB[arm].sample()[0]
-            tr.update(t, arm, reward)
-            for i in range(K):
-                if tr.nb_draws[i]==0:
-                    tao[i]=tao_max
-                else:
-                    tao[i]=min(1/(tr.nb_draws[i])**0.5,tao_max)
-                if tr.nb_draws[i]==0:
-                    mu_hat[i]=tr.S[i]
-                else:
-                    mu_hat[i]=tr.S[i]/tr.nb_draws[i]
-            # arm = np.argmax(np.random.normal(mu_hat, tao))
-            # reward = self.MAB[arm].sample()[0]
-            # tr.update(t, arm, reward)
         return tr
 
     def SW_TS(self, T, tau, store_rewards_arm=True):
