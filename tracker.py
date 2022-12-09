@@ -190,18 +190,52 @@ class TrackerDTS1(Tracker2):
         self.tao_max=tao_max
         self.time_changes = [0]
         self.S = np.zeros(self.nb_arms)
-        self.F = np.zeros(self.nb_arms)
+        #self.F = np.zeros(self.nb_arms)
         self.nb_draws = np.zeros(self.nb_arms)
         self.t = 0
 
     def update(self, t, arm, reward):
         self.S = self.gamma*self.S
-        self.F = self.gamma*self.F
+        #self.F = self.gamma*self.F
         self.nb_draws = self.gamma*self.nb_draws
         self.S[arm] += self.kexi*reward
         self.reward[t] = reward
-        self.F[arm] += 1-reward
+        #self.F[arm] += 1-reward
         self.nb_draws[arm] += self.kexi
+        self.arm_sequence[t] = arm
+        self.t = t
+        if self.store_rewards_arm:
+            self.rewards_arm[arm].append(reward)
+
+    def regret(self):
+        """
+        :return:
+        """
+        res = np.zeros(self.T)
+        n = len(self.time_changes)
+        i = 0
+        max_ = self.means[i].max()
+        for t in range(self.T):
+            if n-(i+1) > 0 and t >= self.time_changes[i+1]:
+                i += 1
+                max_ = self.means[i].max()
+            res[t] = max_ - self.means[i][self.arm_sequence[t]]
+        return np.cumsum(res)
+
+class TrackerTS(Tracker2):
+    def __init__(self, means, T, store_rewards_arm=False):
+        super(TrackerTS, self).__init__(means, T, store_rewards_arm)
+        self.time_changes = [0]
+        self.S = np.zeros(self.nb_arms)
+        self.F = np.zeros(self.nb_arms)
+        self.nb_draws = np.zeros(self.nb_arms)
+        self.t = 0
+
+    def update(self, t, arm, reward):
+        self.S[arm] += reward
+        self.reward[t] = reward
+        self.F[arm] += 1-reward
+        self.nb_draws[arm] += 1
         self.arm_sequence[t] = arm
         self.t = t
         if self.store_rewards_arm:

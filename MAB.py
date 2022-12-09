@@ -4,7 +4,7 @@ import arms
 from tqdm import tqdm
 from math import log
 from utils import rd_argmax, get_leader, get_leader_ns, klucbBern
-from tracker import SWTracker, DiscountTracker, TrackerDTS1, TrackerEXP3, TrackerDTS, TrackerCUSUM, TrackerMUCB
+from tracker import SWTracker, DiscountTracker, Tracker2, TrackerDTS1, TrackerEXP3, TrackerDTS, TrackerCUSUM, TrackerMUCB, TrackerTS
 from tracker import TrackerSWTS, TrackerREXP3, TrackerLM
 
 mapping = {'B': arms.ArmBernoulli, 'beta': arms.ArmBeta, 'F': arms.ArmFinite, 'G': arms.ArmGaussian,
@@ -166,7 +166,7 @@ class GenericMAB:
             tr.update(t, arm, reward)
         return tr
 
-    def DTS_gaussian(self, T, gamma, mu_0, sigma_0, sigma, store_rewards_arm=True):
+    def D_TS_gaussian(self, T, gamma, mu_0, sigma_0, sigma, store_rewards_arm=True):
         """
         Adaptation of Discounted TS to Gaussian distributions.
         :param T: T: T: time horizon.
@@ -187,11 +187,34 @@ class GenericMAB:
             tr.update(t, arm, reward)
         return tr
     
-    def DTS_gaussian1(self, T, gamma, kexi=100,tao_max=0.18, store_rewards_arm=True):
+    def TS_gaussian(self, T, store_rewards_arm=True):
         """
         Adaptation of Discounted TS to Gaussian distributions.
         :param T: T: T: time horizon.
         :param gamma: gamma: discount factor used to compute the posterior
+        :param mu_0: Prior distribution is a Gaussian distribution with mean mu_0
+        :param sigma_0: Prior distribution is a Gaussian distribution with variance sigma_0**2
+        :param sigma: Known variance (or upper-bound) for the different arms
+        :param store_rewards_arm: Storing the rewards for the different arms.
+        :return:
+        """
+        tr = TrackerTS(self.means, T, store_rewards_arm=store_rewards_arm)
+        mu_hat=np.zeros(tr.nb_arms)
+        sigma=np.ones(tr.nb_arms)
+        for t in range(T):
+            self.check_restart(tr)
+            arm = np.argmax(np.random.normal(mu_hat, np.sqrt(sigma)))
+            reward = self.MAB[arm].sample()[0]
+            mu_hat[arm] = (mu_hat[arm] * tr.nb_draws[arm] + reward) / (tr.nb_draws[arm] + 1)
+            sigma=1/(tr.nb_draws+1)
+            tr.update(t, arm, reward)
+        return tr
+    
+    def DS_TS_gaussian(self, T, gamma, kexi=100,tao_max=0.18, store_rewards_arm=True):
+        """
+        Our method
+        :param T:  time horizon.
+        :param gamma:  discount factor used to compute the posterior
         :param kexi: adjust the variance
         :param tao_max: maximum variance
         :param store_rewards_arm: Storing the rewards for the different arms.
@@ -215,9 +238,7 @@ class GenericMAB:
                     mu_hat[i]=tr.S[i]
                 else:
                     mu_hat[i]=tr.S[i]/tr.nb_draws[i]
-            # arm = np.argmax(np.random.normal(mu_hat, tao))
-            # reward = self.MAB[arm].sample()[0]
-            # tr.update(t, arm, reward)
+           
         return tr
 
     def SW_TS(self, T, tau, store_rewards_arm=True):
@@ -418,7 +439,7 @@ class GenericMAB:
             return kl_vect(x.Sa / x.Na, c * log(x.t) / x.Na)
         return self.Index_Policy(T, index_func, tau)
 
-    def D_UCB(self, T, gamma, B, ksi):
+    def DS_UCB(self, T, gamma, B, ksi):
         """
         Implementation of Discount UCB (D-UCB) policy from Garivier et al. (ALT 2011)
         :param T: time horizon.

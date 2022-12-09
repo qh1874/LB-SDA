@@ -1,24 +1,24 @@
 import arms
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
+import statsmodels.stats.api as sms
 from tracker import Tracker2, SWTracker, DiscountTracker
 from MAB import GenericMAB as GMAB
  
-from generate_data import *
+from generate_data import get_reward_distribution
 from utils import plot_mean_arms, traj_arms
-marker_list = ["o","v","*","s"]
-color_list = ['blue','red','orange', 'c', 'm', 'green']
-
+from param import *
 
 # Fixed standard deviation $\sigma = 0.5$
 
-T=10000
-K=5
-m=2000
-N=100
-seed=0
-##keep the distribution of arms consistent each run
+T=param['T'] # Number of rounds
+K=param['K'] # Number of Arms
+m=param['m'] # Length of stationary phase, breakpoints=T/m
+N=param['N'] # Repeat Times
+
+
+# Keep the distribution of arms consistent each run
+seed=np.random.randint(0,1000)
 test_normal,r_opt=get_reward_distribution(T,K,m,seed)
 KG=['G' for _ in range(K)]
 arm_start=KG
@@ -35,86 +35,57 @@ for i in range(m,T,m):
 
 mab = GMAB(arm_start, param_start, chg_dist)
 
-
-
-nb_change = int(T/m)
-Gamma_T_garivier = 10
-reward_u_p = 1
-sigma_max = 0.5
-gamma_EXP3 = min(1, np.sqrt(mab.nb_arms*(nb_change*np.log(mab.nb_arms*T)+np.exp(1))/((np.exp(1)-1)*T)))
-gamma_D_UCB = 1 - 1/(4*reward_u_p)*np.sqrt(Gamma_T_garivier/T)
-gamma_D_UCB_unb = 1 - 1/(4*(reward_u_p+ 2*sigma_max))*np.sqrt(Gamma_T_garivier/T)
-tau_theorique = 2*reward_u_p*np.sqrt(T*np.log(T)/Gamma_T_garivier)
-tau_theorique_unb = 2*(reward_u_p + 2*sigma_max)*np.sqrt(T*np.log(T)/Gamma_T_garivier)
-tau_no_log = 2*reward_u_p*np.sqrt(T/Gamma_T_garivier)
-
-
-print('gamma_D_UCB:', 1/(1-gamma_D_UCB))
-print('tau:', tau_theorique)
-
-reg_UCB1_n_2 = mab.MC_regret('UCB1', N, T, {'C': sigma_max* np.sqrt(2)},store_step=1)
-reg_EXP3S_n_2 = mab.MC_regret("EXP3S", N, T, {'alpha':1/T, 'gamma': gamma_EXP3}, store_step=1)
-reg_DUCB_n_2 = mab.MC_regret('D_UCB', N, T, {'B':sigma_max*1/2,'ksi':2, 'gamma': gamma_D_UCB_unb}, store_step=1)
-reg_SWUCB_n_2 = mab.MC_regret('SW_UCB', N, T, {'C': sigma_max*np.sqrt(2), 'tau': int(tau_theorique_unb)},store_step=1)
-reg_SW_TS_n_2 = mab.MC_regret('SW_TS_gaussian', N, T, {'mu_0':0.5, 'sigma_0':0.5, 'sigma':0.5, 'tau': int(tau_theorique)},store_step=1)
+reg_UCB1_n_2 = mab.MC_regret('UCB1', N, T, param_ucb1,store_step=1)
+reg_EXP3S_n_2 = mab.MC_regret("EXP3S", N, T, param_exp3s, store_step=1)
+reg_DUCB_n_2 = mab.MC_regret('DS_UCB', N, T, param_dsucb, store_step=1)
+reg_SWUCB_n_2 = mab.MC_regret('SW_UCB', N, T, param_swucb,store_step=1)
+reg_SW_TS_n_2 = mab.MC_regret('SW_TS_gaussian', N, T, param_swts,store_step=1)
 #reg_D_TS_n_2 = mab.MC_regret('DTS_gaussian', N, T, {'mu_0':0.5, 'sigma_0':0.5, 'sigma':0.5, 'gamma': gamma_D_UCB},store_step=1)
-reg_D_TS_n_2 = mab.MC_regret('DTS_gaussian1', N, T, {'kexi':100, 'tao_max':0.2, 'gamma': 0.95},store_step=1)
-reg_LBSDA_n_2 = mab.MC_regret('LB_SDA', N, T, {'tau': int(tau_theorique)}, store_step=1)
+reg_D_TS_n_2 = mab.MC_regret('DS_TS_gaussian', N, T, param_dsts,store_step=1)
+reg_TS_n_2 = mab.MC_regret('TS_gaussian', N, T,{},store_step=1)
+reg_LBSDA_n_2 = mab.MC_regret('LB_SDA', N, T, param_lbsda, store_step=1)
 
 
+x=np.arange(T)
+d = int(T / 20)
+xx = np.arange(0, T, d)
+alpha=0.05
+
+low_bound, high_bound = sms.DescrStatsW(reg_EXP3S_n_2[1].T).tconfint_mean(alpha=alpha)
+plt.plot(xx, reg_EXP3S_n_2[0][xx], '-g^', markerfacecolor='none', label='EXP3S')
+plt.fill_between(x, low_bound, high_bound, alpha=0.5,color='g')
+
+low_bound, high_bound = sms.DescrStatsW(reg_LBSDA_n_2[1].T).tconfint_mean(alpha=alpha)
+plt.plot(xx, reg_LBSDA_n_2[0][xx], '-c*', markerfacecolor='none', label='SW-LB-SDA')
+plt.fill_between(x, low_bound, high_bound, alpha=0.5,color='c')
+
+low_bound, high_bound = sms.DescrStatsW(reg_UCB1_n_2[1].T).tconfint_mean(alpha=alpha)
+plt.plot(xx, reg_UCB1_n_2[0][xx], '-k^', markerfacecolor='none', label='UCB1')
+plt.fill_between(x, low_bound, high_bound, alpha=0.5,color='k')
+
+low_bound, high_bound = sms.DescrStatsW(reg_DUCB_n_2[1].T).tconfint_mean(alpha=alpha)
+plt.plot(xx, reg_DUCB_n_2[0][xx], '-bd', markerfacecolor='none', label='DS_kl-UCB')
+plt.fill_between(x, low_bound, high_bound, alpha=0.5,color='b')
+
+low_bound, high_bound = sms.DescrStatsW(reg_SWUCB_n_2[1].T).tconfint_mean(alpha=alpha)
+plt.plot(xx, reg_SWUCB_n_2[0][xx], '-ms', markerfacecolor='none', label='SW_kl_UCB')
+plt.fill_between(x, low_bound, high_bound, alpha=0.5,color='m')
+
+low_bound, high_bound = sms.DescrStatsW(reg_TS_n_2[1].T).tconfint_mean(alpha=alpha)
+plt.plot(xx, reg_TS_n_2[0][xx], color='purple',marker='*', markerfacecolor='none', label='TS')
+plt.fill_between(x, low_bound, high_bound, alpha=0.5,color='purple')
+
+low_bound, high_bound = sms.DescrStatsW(reg_SW_TS_n_2[1].T).tconfint_mean(alpha=alpha)
+plt.plot(xx, reg_SW_TS_n_2[0][xx], '-y^', markerfacecolor='none', label='SW_TS')
+plt.fill_between(x, low_bound, high_bound, alpha=0.5,color='y')
+
+low_bound, high_bound = sms.DescrStatsW(reg_D_TS_n_2[1].T).tconfint_mean(alpha=alpha)
+plt.plot(xx, reg_D_TS_n_2[0][xx], '-ro', markerfacecolor='none', label='DS_TS')
+plt.fill_between(x, low_bound, high_bound, alpha=0.5,color='r')
 
 
-#plt.rc('text', usetex=True)
-# plt.rc('font', family='serif')
-# plt.rc("lines", linewidth=3)
-# matplotlib.rc('xtick', labelsize=15)
-# matplotlib.rc('ytick', labelsize=15)
-# matplotlib.rc('font', weight='bold')
-#matplotlib.rcParams['text.latex.preamble'] = [r"\usepackage{amsmath} \boldmath"]
-
-
-t_saved = [i for i in range(T)]
-
-
-#for keys in chg_dist:
-#    print(keys)
-#    plt.axvline(keys, color='red', linestyle='--', lw=1)
-    
-    
-#plt.figure(figsize=(4,3))
-
-
-alpha1=0.5
-plt.plot(reg_UCB1_n_2[0], color = "orange", marker = "*", markevery = 1000, markersize = 8, label = 'UCB1')
-plt.fill_between(t_saved, np.quantile(reg_UCB1_n_2[1], q= 0.25, axis=1), np.quantile(reg_UCB1_n_2[1], q= 0.75, axis=1), 
-                 alpha=alpha1, linewidth=1.5, color="orange")
-
-plt.plot(reg_LBSDA_n_2[0], color = "blue",  linewidth=2.5, label= "SW-LB-SDA")
-plt.fill_between(t_saved, np.quantile(reg_LBSDA_n_2[1], q= 0.25, axis=1), 
-                 np.quantile(reg_LBSDA_n_2[1], q= 0.75, axis=1), color = "blue",  linewidth=1.5, alpha=alpha1)
-plt.plot(reg_EXP3S_n_2[0], color = "green",marker = 'o', markevery= 1000, label = 'EXP3S')
-plt.fill_between(t_saved, np.quantile(reg_EXP3S_n_2[1], q= 0.25, axis=1), 
-                 np.quantile(reg_EXP3S_n_2[1], q= 0.75, axis=1), color = "green",  linewidth=1.5, alpha=alpha1)
-plt.plot(reg_DUCB_n_2[0], color = "m", marker= "v", linewidth = 1.5, markevery=1000, label = 'D-kl-UCB')
-plt.fill_between(t_saved, np.quantile(reg_DUCB_n_2[1], q= 0.25, axis=1), 
-                 np.quantile(reg_DUCB_n_2[1], q= 0.75, axis=1), color = "m",  linewidth=1.5, alpha=alpha1)
-
-plt.plot(reg_SWUCB_n_2[0], color = "c", linestyle = "--", markevery=1000,label= "SW-kl-UCB")
-plt.fill_between(t_saved, np.quantile(reg_SWUCB_n_2[1], q= 0.25, axis=1), 
-                 np.quantile(reg_SWUCB_n_2[1], q= 0.75, axis=1), color = "c",  linewidth=1.5, alpha=alpha1)
-
-plt.plot(reg_SW_TS_n_2[0], color = "red",  linewidth = 1.8, 
-         linestyle = "-", marker = 's', markevery=1000,label= "SW-TS")
-plt.fill_between(t_saved, np.quantile(reg_SW_TS_n_2[1], q= 0.25, axis=1), 
-                 np.quantile(reg_SW_TS_n_2[1], q= 0.75, axis=1), color = "red",  linewidth=1.5, alpha=alpha1)
-plt.plot(reg_D_TS_n_2[0], color = "black", linewidth = 1.5, linestyle="--",label= "D-TS")
-plt.fill_between(t_saved, np.quantile(reg_D_TS_n_2[1], q= 0.25, axis=1), 
-                 np.quantile(reg_D_TS_n_2[1], q= 0.75, axis=1), color = "black",  linewidth=1.5, alpha=alpha1)
-
-
-    
-#plt.legend(loc=2, fontsize=8).draw_frame(True)
 plt.legend()
+plt.title("T : {}, arms : {}, breakpoints: {} ".format(T, K, int(T / m)))
 plt.xlabel('Round t')
 plt.ylabel('Regret')
 plt.show()
