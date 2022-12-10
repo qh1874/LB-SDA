@@ -2,7 +2,7 @@ import numpy as np
 
 param={
     'T':100000, # round 
-    'K':10,  # arm
+    'K':5,  # arm
     'm':10000, # length of stationary phase, breakpoints=T/m
     'N':100 # repeat times
 }
@@ -14,7 +14,7 @@ nb_change=int(T/m)
 Gamma_T_garivier = max(nb_change-1,1)
 reward_u_p = 1
 sigma_max = 1
-gamma_EXP3 = min(1, np.sqrt(K*(nb_change*np.log(K*T)+np.exp(1))/((np.exp(1)-1)*T)))
+gamma_EXP3 = min(1, 0.1*np.sqrt(K*(nb_change*np.log(K*T)+np.exp(1))/((np.exp(1)-1)*T)))
 gamma_D_UCB = 1 - 1/(4*reward_u_p)*np.sqrt(Gamma_T_garivier/T)
 gamma_D_UCB_unb = 1 - 1/(4*(reward_u_p+ 2*sigma_max))*np.sqrt(Gamma_T_garivier/T)
 tau_theorique = 2*reward_u_p*np.sqrt(T*np.log(T)/Gamma_T_garivier)
