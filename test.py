@@ -4,10 +4,8 @@ import matplotlib.pyplot as plt
 import statsmodels.stats.api as sms
 from tracker import Tracker2, SWTracker, DiscountTracker
 from MAB import GenericMAB as GMAB
- 
 from generate_data import get_reward_distribution
 from utils import plot_mean_arms, traj_arms,save_data
-import time
 from param import *
 
 # Fixed standard deviation $\sigma = 0.5$
@@ -19,7 +17,7 @@ N=param['N'] # Repeat Times
 
 
 # Keep the distribution of arms consistent each run
-seed=0
+seed=1
 test_normal,r_opt=get_reward_distribution(T,K,m,seed)
 KG=['G' for _ in range(K)]
 arm_start=KG
@@ -33,6 +31,7 @@ for i in range(m,T,m):
 #             '4500': [['G', 'G', 'G'], [[0.3,0.5], [0.2,0.5], [0.7,0.5]]],
 #             '7000': [['G', 'G', 'G'], [[0.9,0.5], [0.8,0.5], [0.4,0.5] ]]
 #            }
+
 
 mab = GMAB(arm_start, param_start, chg_dist)
 
