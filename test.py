@@ -19,8 +19,7 @@ N=param['N'] # Repeat Times
 
 
 # Keep the distribution of arms consistent each run
-#seed=0
-seed=np.random.randint(0,1000)
+seed=0
 test_normal,r_opt=get_reward_distribution(T,K,m,seed)
 KG=['G' for _ in range(K)]
 arm_start=KG
