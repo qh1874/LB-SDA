@@ -94,7 +94,7 @@ class GenericMAB:
         if store:
             all_regret = np.zeros((np.arange(T)[::store_step].shape[0], N))
         alg = self.__getattribute__(method)
-        for i in tqdm(range(N), desc='Computing ' + str(N) + ' simulations'):
+        for i in tqdm(range(N), desc=method+' Computing ' + str(N) + ' simulations'):
             self.reinit_mab()
             tr = alg(T, **param_dic)
             regret = tr.regret()
