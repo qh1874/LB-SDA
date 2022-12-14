@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import statsmodels.stats.api as sms
 from tracker import Tracker2, SWTracker, DiscountTracker
 from MAB import GenericMAB as GMAB
-from generate_data import get_reward_distribution
+from generate_data import generate_arm_Gauss,generate_arm_Bernoulli
 from utils import plot_mean_arms, traj_arms,save_data
 from param import *
 
@@ -17,14 +17,8 @@ N=param['N'] # Repeat Times
  
 
 # Keep the distribution of arms consistent each run
-seed=1
-test_normal=get_reward_distribution(T,K,m,seed)
-KG=['G' for _ in range(K)]
-arm_start=KG
-param_start=test_normal[0].tolist()
-chg_dist={}
-for i in range(m,T,m):
-    chg_dist[str(i)]=[ KG,test_normal[i].tolist()]
+seed=0
+arm_start,param_start,chg_dist=generate_arm_Bernoulli(T,K,m,seed)
 
 # arm_start, param_start =['G', 'G', 'G'], [[0.9,0.5], [0.5,0.5], [0.4,0.5]]
 # chg_dist = {'2500': [['G', 'G', 'G'], [[0.4,0.5], [0.8,0.5], [0.5,0.5]]],
@@ -32,14 +26,7 @@ for i in range(m,T,m):
 #             '7000': [['G', 'G', 'G'], [[0.9,0.5], [0.8,0.5], [0.4,0.5] ]]
 #            }
 
-plt.figure(1)
-for i in range(K):
-    plt.plot(test_normal[:,i,0],label='arm'+str(i))
-plt.legend()
-
-
 mab = GMAB(arm_start, param_start, chg_dist)
-
 
 EXP3S_data = mab.MC_regret("EXP3S", N, T, param_exp3s, store_step=1)
 DS_UCB_data = mab.MC_regret('DS_UCB', N, T, param_dsucb, store_step=1)
@@ -53,7 +40,6 @@ CUSUM_data = mab.MC_regret('CUSUM', N, T, {'alpha':alpha_CUSUM , 'h': h_CUSUM, '
 L=['EXP3S_data','CUSUM_data','DS_UCB_data','SW_UCB_data','SW_TS_data','DS_TS_data','TS_data','LBSDA_data']
 for i in L:
     print(i+":",eval(i)[0][-1])
-
 
 x=np.arange(T)
 d = int(T / 20)
@@ -92,10 +78,8 @@ low_bound, high_bound = sms.DescrStatsW(DS_TS_data[1].T).tconfint_mean(alpha=alp
 plt.plot(xx, DS_TS_data[0][xx], '-ro', markerfacecolor='none', label='DS_TS')
 plt.fill_between(x, low_bound, high_bound, alpha=0.5,color='r')
 
-
 plt.legend()
 plt.title("T : {}, arms : {}, breakpoints: {} ".format(T, K, int(T / m)))
 plt.xlabel('Round t')
 plt.ylabel('Regret')
 plt.show()
-#plt.savefig('final_gaussian.png')

@@ -1,9 +1,9 @@
 import numpy as np
 
 param={
-    'T':100000, # round 
-    'K':5,  # arm
-    'm':20000, # length of stationary phase, breakpoints=T/m
+    'T':10000, # round 
+    'K':30,  # arm
+    'm':10000, # length of stationary phase, breakpoints=T/m
     'N':1 # repeat times
 }
 
