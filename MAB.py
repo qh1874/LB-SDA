@@ -189,12 +189,8 @@ class GenericMAB:
     
     def TS_gaussian(self, T, store_rewards_arm=True):
         """
-        Adaptation of Discounted TS to Gaussian distributions.
+        Thompson Sampling with Gaussian distributions from Shipra Agrawal 2013.
         :param T: T: T: time horizon.
-        :param gamma: gamma: discount factor used to compute the posterior
-        :param mu_0: Prior distribution is a Gaussian distribution with mean mu_0
-        :param sigma_0: Prior distribution is a Gaussian distribution with variance sigma_0**2
-        :param sigma: Known variance (or upper-bound) for the different arms
         :param store_rewards_arm: Storing the rewards for the different arms.
         :return:
         """
@@ -224,9 +220,13 @@ class GenericMAB:
         K=tr.nb_draws.shape[0]
         tao=np.ones(K)
         mu_hat=np.zeros(K)
+        theta=np.zeros(K)
         for t in range(T):
             self.check_restart(tr)
             arm = np.argmax(np.random.normal(mu_hat, tao))
+            # for i in range(K):
+            #     theta[i]=max(mu_hat[i],np.random.normal(mu_hat[i],tao[i]))
+            # arm=np.argmax(theta)
             reward = self.MAB[arm].sample()[0]
             tr.update(t, arm, reward)
             for i in range(K):
